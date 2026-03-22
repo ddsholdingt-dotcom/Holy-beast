@@ -1,0 +1,69 @@
+services:
+  - type: web
+    name: eduvox-api
+    runtime: python
+    region: frankfurt
+    plan: standard
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eduvox-postgres
+          property: connectionString
+      
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: eduvox-redis
+          property: connectionString
+      
+      # API Keys - add these in Render dashboard later
+      - key: TRIPO_API_KEY
+        sync: false
+      
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      
+      - key: RUNWAY_API_KEY
+        sync: false
+      
+      - key: OPENAI_API_KEY
+        sync: false
+      
+      - key: JWT_SECRET_KEY
+        generateValue: true
+
+  - type: worker
+    name: eduvox-worker
+    runtime: python
+    region: frankfurt
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eduvox-postgres
+          property: connectionString
+
+databases:
+  - name: eduvox-postgres
+    databaseName: eduvox_production
+    user: eduvox_admin
+    plan: basic-1gb
+    region: frankfurt
+    ipAllowList: []
+
+redis:
+  - name: eduvox-redis
+    plan: starter
+    region: frankfurt
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
